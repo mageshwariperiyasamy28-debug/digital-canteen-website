@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Minus, Plus, ShoppingCart, ArrowLeft, Leaf } from "lucide-react";
 import { toast } from "sonner";
+import { useUser } from "@/contexts/UserContext";
+import { auth } from "@/lib/firebase";
 
 interface MenuItem {
   id: number;
@@ -198,7 +200,7 @@ const menuItems: MenuItem[] = [
     name: "Palak Paneer",
     description: "Cottage cheese in creamy spinach curry",
     price: 949,
-    image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
+    image: "https://images.unsplash.com/photo-1601050690405-a0930f7ab5d3?w=400&h=300&fit=crop",
     category: "Main Course",
     type: "veg"
   },
@@ -242,9 +244,17 @@ const menuItems: MenuItem[] = [
 
 export default function MenuPage() {
   const router = useRouter();
+  const { user, loading } = useUser();
   const [cart, setCart] = useState<{ item: MenuItem; quantity: number }[]>([]);
   const [quantities, setQuantities] = useState<{ [key: number]: number }>({});
   const [filterType, setFilterType] = useState<"all" | "veg" | "non-veg">("all");
+
+  // Redirect to login if user is not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -318,6 +328,21 @@ export default function MenuPage() {
 
   const totalAmount = cart.reduce((sum, cartItem) => sum + cartItem.item.price * cartItem.quantity, 0);
   const totalItems = cart.reduce((sum, cartItem) => sum + cartItem.quantity, 0);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">Loading menu...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // This case is handled by the redirect effect
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">

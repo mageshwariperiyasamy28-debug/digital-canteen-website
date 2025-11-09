@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ArrowLeft, CreditCard, Smartphone, Wallet, Banknote, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { useUser } from "@/contexts/UserContext";
+import { auth } from "@/lib/firebase";
 
 interface MenuItem {
   id: number;
@@ -31,6 +33,7 @@ type PaymentMethod = "card" | "upi" | "wallet" | "cod";
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { user, loading } = useUser();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -53,6 +56,13 @@ export default function CheckoutPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+
+  // Redirect to login if user is not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
 
   useEffect(() => {
     // Load cart from localStorage
@@ -167,6 +177,21 @@ export default function CheckoutPage() {
       setCvv(value);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">Loading checkout...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // This case is handled by the redirect effect
+  }
 
   if (orderPlaced) {
     return (

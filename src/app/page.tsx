@@ -1,8 +1,16 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { UtensilsCrossed, Clock, Award, ShoppingCart, User } from "lucide-react";
+import { UtensilsCrossed, Clock, Award, ShoppingCart, User, LogOut } from "lucide-react";
+import { useUser } from "@/contexts/UserContext";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { toast } from "sonner";
 
 const featuredItems = [
   {
@@ -26,6 +34,24 @@ const featuredItems = [
 ];
 
 export default function Home() {
+  const { user, loading } = useUser();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await signOut(auth);
+      toast.success("You have been logged out successfully");
+      router.push("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Failed to logout. Please try again.");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       {/* Navigation Bar */}
@@ -42,12 +68,38 @@ export default function Home() {
                   Menu
                 </Button>
               </Link>
-              <Link href="/login">
-                <Button className="bg-orange-600 hover:bg-orange-700 text-white">
-                  <User className="w-4 h-4 mr-2" />
-                  Login
-                </Button>
-              </Link>
+              {loading ? (
+                <Button variant="ghost" disabled>Loading...</Button>
+              ) : user ? (
+                <div className="flex items-center gap-2">
+                  <Link href="/dashboard">
+                    <Button variant="ghost" className="text-gray-700 dark:text-gray-300 hover:text-orange-600">
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Link href="/profile">
+                    <Button variant="ghost" className="text-gray-700 dark:text-gray-300 hover:text-orange-600">
+                      Profile
+                    </Button>
+                  </Link>
+                  <Button 
+                    onClick={handleLogout} 
+                    disabled={isLoggingOut}
+                    variant="outline" 
+                    className="flex items-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    {isLoggingOut ? "Logging out..." : "Logout"}
+                  </Button>
+                </div>
+              ) : (
+                <Link href="/login">
+                  <Button className="bg-orange-600 hover:bg-orange-700 text-white">
+                    <User className="w-4 h-4 mr-2" />
+                    Login
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -76,11 +128,13 @@ export default function Home() {
                   View Menu
                 </Button>
               </Link>
-              <Link href="/login">
-                <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white/10 text-lg px-8 py-6 w-full sm:w-auto">
-                  Get Started
-                </Button>
-              </Link>
+              {!user && (
+                <Link href="/login">
+                  <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white/10 text-lg px-8 py-6 w-full sm:w-auto">
+                    Get Started
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -208,7 +262,15 @@ export default function Home() {
               <h4 className="text-xl font-bold mb-4">Quick Links</h4>
               <ul className="space-y-2 text-gray-400">
                 <li><Link href="/menu" className="hover:text-orange-600 transition-colors">Menu</Link></li>
-                <li><Link href="/login" className="hover:text-orange-600 transition-colors">Login</Link></li>
+                {user ? (
+                  <>
+                    <li><Link href="/dashboard" className="hover:text-orange-600 transition-colors">Dashboard</Link></li>
+                    <li><Link href="/profile" className="hover:text-orange-600 transition-colors">Profile</Link></li>
+                    <li><button onClick={handleLogout} className="text-left hover:text-orange-600 transition-colors">Logout</button></li>
+                  </>
+                ) : (
+                  <li><Link href="/login" className="hover:text-orange-600 transition-colors">Login</Link></li>
+                )}
                 <li><Link href="#" className="hover:text-orange-600 transition-colors">About Us</Link></li>
                 <li><Link href="#" className="hover:text-orange-600 transition-colors">Contact</Link></li>
               </ul>

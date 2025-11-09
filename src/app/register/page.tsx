@@ -9,6 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UtensilsCrossed } from "lucide-react";
 import { toast } from "sonner";
+import { auth } from "@/lib/firebase";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -37,12 +41,60 @@ export default function RegisterPage() {
       return;
     }
 
-    // Simulate registration - In real app, this would call an API
-    setTimeout(() => {
-      toast.success("Account created successfully! Please sign in.");
-      router.push("/login");
+    try {
+      // Create user with email and password
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+      
+      // Update user profile with display name
+      await updateProfile(user, {
+        displayName: formData.name,
+      });
+      
+      // Create user document in Firestore
+      try {
+        await setDoc(doc(db, "users", user.uid), {
+          uid: user.uid,
+          name: formData.name,
+          email: formData.email,
+          createdAt: new Date(),
+          lastLogin: new Date(),
+        });
+      } catch (firestoreError: any) {
+        // Handle permission errors gracefully
+        if (firestoreError.code === "permission-denied") {
+          console.warn("Unable to create user document due to permissions");
+        } else {
+          throw firestoreError;
+        }
+      }
+      
+      toast.success("Account created successfully! Welcome to Digital Canteen.");
+      router.push("/menu");
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      let errorMessage = "Failed to create account. Please try again.";
+      
+      if (error.code === "auth/email-already-in-use") {
+        errorMessage = "An account already exists with this email address.";
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address.";
+      } else if (error.code === "auth/operation-not-allowed") {
+        errorMessage = "Email/password accounts are not enabled.";
+      } else if (error.code === "auth/weak-password") {
+        errorMessage = "Password is too weak. Please use a stronger password.";
+      } else if (error.code === "permission-denied") {
+        errorMessage = "Access denied. Please contact support.";
+        // Still redirect to menu even if Firestore update fails
+        toast.success("Account created successfully! Welcome to Digital Canteen.");
+        router.push("/menu");
+        return;
+      }
+      
+      toast.error(errorMessage);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
